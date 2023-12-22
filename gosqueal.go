@@ -1,8 +1,8 @@
 package main
 import ( "net"
-         "fmt"
          "os"
          "log"
+         "fmt"
          "bytes"
 	 "database/sql"
 	_ "modernc.org/sqlite"
@@ -14,13 +14,9 @@ const (
 )
 func main() {
   hostname, err := os.Hostname()
-  if err != nil {
-	fmt.Println(err)
-	os.Exit(1)
-  }
   var (
   buf    bytes.Buffer
-  logger = log.New(&buf, hostname.": ", log.Lshortfile)
+  logger = log.New(&buf, hostname, log.Lshortfile)
   )
   db, err := sql.Open("sqlite",":memory:")
   if err != nil { panic(err)
@@ -29,22 +25,22 @@ func main() {
 		create table metrics(metricname text primary key, time timestamp, value real);
 		create table translog(time timestamp, query text);
 	`)
-  fmt.Println("Start server...")
+  logger.Print("Start server...")
   server, err := net.Listen(SERVER_TYPE, SERVER_HOST+":"+SERVER_PORT)
         if err != nil {
-                fmt.Println("Error listening:", err.Error())
+                logger.Print("Error listening:", err.Error())
                 os.Exit(1)
         }
         defer server.Close()
-        fmt.Println("Listening on " + SERVER_HOST + ":" + SERVER_PORT)
-        fmt.Println("Waiting for client...")
+        logger.Print("Listening on " + SERVER_HOST + ":" + SERVER_PORT)
+        logger.Print("Waiting for client...")
         for {
                 connection, err := server.Accept()
                 if err != nil {
-                        fmt.Println("Error accepting: ", err.Error())
+                        logger.Print("Error accepting: ", err.Error())
                         os.Exit(1)
                 }
-                fmt.Println("client connected")
+                logger.Print("client connected")
                 go processClient(connection)
         }
 }
