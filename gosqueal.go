@@ -2,6 +2,8 @@ package main
 import ( "net"
          "fmt"
          "os"
+         "log"
+         "bytes"
 	 "database/sql"
 	_ "modernc.org/sqlite"
 )
@@ -11,6 +13,15 @@ const (
         SERVER_TYPE = "tcp"
 )
 func main() {
+  hostname, err := os.Hostname()
+  if err != nil {
+	fmt.Println(err)
+	os.Exit(1)
+  }
+  var (
+  buf    bytes.Buffer
+  logger = log.New(&buf, hostname.": ", log.Lshortfile)
+  )
   db, err := sql.Open("sqlite",":memory:")
   if err != nil { panic(err)
                   os.Exit(1) }
