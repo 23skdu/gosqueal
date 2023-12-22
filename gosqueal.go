@@ -11,7 +11,7 @@ const (
         SERVER_TYPE = "tcp"
 )
 func main() {
-  db, err := sql.Open("sqlite",":memory")
+  db, err := sql.Open("sqlite",":memory:")
   if err != nil { panic(err)
                   os.Exit(1) }
   db.Exec(`
