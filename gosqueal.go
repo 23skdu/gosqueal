@@ -37,7 +37,8 @@ func main() {
                         log.Info().Msg("Error accepting: "+err.Error())
                         os.Exit(1)
                 }
-                log.Info().Msg("client connected")
+                ip := connection.RemoteAddr().(*net.TCPAddr)
+		log.Info().Msg("client connected from "+ip.IP.String())
                 go processClient(connection)
         }
 }
