@@ -8,7 +8,7 @@ import ( "net"
 )
 func main() {
   srvHost := flag.String("host", "0.0.0.0", "server host ip")
-  srvPort := flag.Int("port", "1118", "server host ip")
+  srvPort := flag.Sring("port", "1118", "server host ip")
   flag.Parse()
   hostname, err := os.Hostname()
   if err != nil { panic(err)
