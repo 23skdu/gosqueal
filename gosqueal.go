@@ -1,36 +1,32 @@
 package main
 import ( "net"
          "os"
+	 "flag"
 	 "database/sql"
 	_ "modernc.org/sqlite"
         "github.com/rs/zerolog/log"
 )
-const (
-        SERVER_HOST = "0.0.0.0"
-        SERVER_PORT = "1118"
-        SERVER_TYPE = "tcp"
-)
 func main() {
+  srvHost := flag.String("host", "0.0.0.0", "server host ip")
+  srvPort := flag.Int("port", "1118", "server host ip")
+  flag.Parse()
   hostname, err := os.Hostname()
   if err != nil { panic(err)
                   os.Exit(1) }
-  log.Info().Msg(hostname)
   db, err := sql.Open("sqlite",":memory:")
   if err != nil { panic(err)
                   os.Exit(1) }
   db.Exec(`
 		create table metrics(metricname text primary key, time timestamp, value real);
-		create table translog(time timestamp, query text);
+		create table translog(time timestamp primary key, client text, query text);
 	`)
-  log.Info().Msg("Start server...")
-  server, err := net.Listen(SERVER_TYPE, SERVER_HOST+":"+SERVER_PORT)
+  server, err := net.Listen("tcp", srvHost+":"+srvPort)
         if err != nil {
-                log.Info().Msg("Error listening:"+err.Error())
+		log.Error().Msg(hostname+":: error listening:"+err.Error())
                 os.Exit(1)
         }
         defer server.Close()
-        log.Info().Msg("Listening on " + SERVER_HOST + ":" + SERVER_PORT)
-        log.Info().Msg("Waiting for client...")
+	log.Info().Msg(hostname+":: listening on " + srvHost + ":" + srvPort)
         for {
                 connection, err := server.Accept()
                 if err != nil {
@@ -38,7 +34,7 @@ func main() {
                         os.Exit(1)
                 }
 		ip := connection.RemoteAddr().String()
-		log.Info().Msg("client connected from "+ip)
+		log.Info().Msg(hostname+":: client connected from "+ip)
                 go processClient(connection)
         }
 }
@@ -51,4 +47,12 @@ func processClient(connection net.Conn) {
         log.Info().Msg("Received: "+string(buffer[:mLen]))
         _, err = connection.Write([]byte("Thanks! Got your message:" + string(buffer[:mLen])))
         connection.Close()
+}
+
+func getEnv(key, fallback string) string {
+    value, exists := os.LookupEnv(key)
+    if !exists {
+        value = fallback
+    }
+    return value
 }
