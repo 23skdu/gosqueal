@@ -2,8 +2,8 @@ FROM golang:latest as builder
 WORKDIR /
 COPY go.mod go.sum gosqueal.go /
 RUN set -x\
-    && GOOS=linux go build -ldflags "-s" gosqueal.go
+    && CGO_ENABLED=0 GOOS=linux go build -ldflags "-s" gosqueal.go
 
-FROM debian:trixie-slim 
+FROM scratch 
 COPY --from=builder /gosqueal /gosqueal
 CMD ["/gosqueal"]
