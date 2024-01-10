@@ -1,12 +1,10 @@
 #Golang SQLite3 In Memory "HotPocket"
+## teeny tiny small Docker image
 ```
-gosqueal $ docker build . -t gosqueal:0.1
+$ docker build . -t gosqueal:0.1
 ```
-Adding logging and metrics
+you can pass custom ip and ports on the cmdline
 ```
-gosqueal $ ./gosqueal 
-{"level":"info","time":"2023-12-22T00:23:09-08:00","message":"YourHostname"}
-{"level":"info","time":"2023-12-22T00:23:09-08:00","message":"Start server..."}
-{"level":"info","time":"2023-12-22T00:23:09-08:00","message":"Listening on 0.0.0.0:1118"}
-{"level":"info","time":"2023-12-22T00:23:09-08:00","message":"Waiting for client..."}
+$ docker run -p 8080:8080 gosqueal:0.1 /gosqueal -port=8080 -host 127.0.0.1
+{"level":"info","time":"2024-01-10T06:11:55Z","message":"717684fa40fa:: listening on 127.0.0.1:8080"}
 ```
