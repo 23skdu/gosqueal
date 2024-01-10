@@ -17,7 +17,6 @@ func main() {
   if err != nil { panic(err)
                   os.Exit(1) }
   db.Exec(`
-		create table metrics(metricname text primary key, time timestamp, value real);
 		create table translog(time timestamp primary key, client text, query text);
 	`)
   server, err := net.Listen("tcp", *srvHost +":"+ *srvPort)
@@ -35,24 +34,20 @@ func main() {
                 }
 		ip := connection.RemoteAddr().String()
 		log.Info().Msg(hostname+":: client connected from "+ip)
-                go processClient(connection)
-        }
-}
-func processClient(connection net.Conn) {
-        buffer := make([]byte, 1024)
-        mLen, err := connection.Read(buffer)
-        if err != nil {
+                buffer := make([]byte, 1024)
+                mLen, err := connection.Read(buffer)
+                if err != nil {
                 log.Info().Msg("Error reading:"+err.Error())
-        }
-        log.Info().Msg("Received: "+string(buffer[:mLen]))
-        _, err = connection.Write([]byte("Thanks! Got your message:" + string(buffer[:mLen])))
-        connection.Close()
-}
-
-func getEnv(key, fallback string) string {
-    value, exists := os.LookupEnv(key)
-    if !exists {
-        value = fallback
-    }
-    return value
+                }
+                log.Info().Msg("From "+ip+" Received: "+string(buffer[:mLen]))
+                _, err = db.Exec("INSERT into translog VALUES(TIME('now'),?,?);", ip, string(buffer[:mLen]))
+                if err != nil {
+                log.Info().Msg("error create translog entry"+err.Error())
+                }
+                _,err = db.Exec(string(buffer[:mLen]))
+                if err != nil {
+                log.Info().Msg("error:"+err.Error())
+                }
+                connection.Close()
+	}
 }
