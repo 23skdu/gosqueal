@@ -8,7 +8,7 @@ import ( "net"
 )
 func main() {
   srvHost := flag.String("host", "0.0.0.0", "server host ip")
-  srvPort := flag.Sring("port", "1118", "server host ip")
+  srvPort := flag.String("port", "1118", "server host ip")
   flag.Parse()
   hostname, err := os.Hostname()
   if err != nil { panic(err)
@@ -20,13 +20,13 @@ func main() {
 		create table metrics(metricname text primary key, time timestamp, value real);
 		create table translog(time timestamp primary key, client text, query text);
 	`)
-  server, err := net.Listen("tcp", srvHost+":"+srvPort)
+  server, err := net.Listen("tcp", *srvHost +":"+ *srvPort)
         if err != nil {
 		log.Error().Msg(hostname+":: error listening:"+err.Error())
                 os.Exit(1)
         }
         defer server.Close()
-	log.Info().Msg(hostname+":: listening on " + srvHost + ":" + srvPort)
+	log.Info().Msg(hostname+":: listening on " + *srvHost + ":" + *srvPort)
         for {
                 connection, err := server.Accept()
                 if err != nil {
