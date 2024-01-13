@@ -3,12 +3,12 @@ import ( "net"
          "os"
 	 "flag"
 	 "database/sql"
-	_ "modernc.org/sqlite"
-        "github.com/rs/zerolog/log"
+         _ "modernc.org/sqlite"
+         "github.com/rs/zerolog/log"
 )
 func main() {
-  srvHost := flag.String("host", "0.0.0.0", "server host ip")
-  srvPort := flag.String("port", "1118", "server host ip")
+  srvHost := flag.String("host", "0.0.0.0", "server ip")
+  srvPort := flag.String("port", "1118", "server port")
   flag.Parse()
   hostname, err := os.Hostname()
   if err != nil { panic(err)
@@ -42,12 +42,13 @@ func main() {
                 log.Info().Msg("From "+ip+" Received: "+string(buffer[:mLen]))
                 _, err = db.Exec("INSERT into translog VALUES(TIME('now'),?,?);", ip, string(buffer[:mLen]))
                 if err != nil {
-                log.Info().Msg("error create translog entry"+err.Error())
+			log.Info().Msg("error: "+err.Error())
                 }
-                _,err = db.Exec(string(buffer[:mLen]))
+                xxc, err = db.Exec(string(buffer[:mLen]))
                 if err != nil {
-                log.Info().Msg("error:"+err.Error())
+                log.Info().Msg("error: "+err.Error())
                 }
+		_, err = connection.Write([]byte(xxc.Result()))
                 connection.Close()
 	}
 }
