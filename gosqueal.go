@@ -40,15 +40,11 @@ func main() {
                 log.Info().Msg("Error reading:"+err.Error())
                 }
                 log.Info().Msg("From "+ip+" Received: "+string(buffer[:mLen]))
-                _, err = db.Exec("INSERT into translog VALUES(TIME('now'),?,?);", ip, string(buffer[:mLen]))
+		_, err = db.Exec("INSERT into translog VALUES(TIME('now'),?,?);", ip, string(buffer[:mLen]))
                 if err != nil {
 			log.Info().Msg("error: "+err.Error())
                 }
-                xxc, err = db.Exec(string(buffer[:mLen]))
-                if err != nil {
-                log.Info().Msg("error: "+err.Error())
-                }
-		_, err = connection.Write([]byte(xxc.Result()))
+		_,err = db.Exec(string(buffer[:mLen]))
                 connection.Close()
 	}
 }
