@@ -1,10 +1,31 @@
-#Golang SQLite3 In Memory "HotPocket"
-## teeny tiny small Docker image
+# gosqueal
+
+![CI](https://github.com/23skdu/gosqueal/actions/workflows/ci.yml/badge.svg?branch=fix/standardize-layout)
+
+A simple TCP server that logs and executes received SQL queries against an in-memory SQLite database. Useful for testing or as a honeypot.
+
+## Architecture
+
+- **Language**: Go
+- **Database**: SQLite (modernc.org/sqlite - pure Go)
+- **Protocol**: TCP
+
+## Development
+
+### Build
+
+```bash
+go build ./cmd/gosqueal
 ```
-$ docker build . -t gosqueal:0.1
+
+### Run
+
+```bash
+./gosqueal -port 1118
 ```
-you can pass custom ip and ports on the cmdline
-```
-$ docker run -p 8080:8080 gosqueal:0.1 /gosqueal -port=8080 -host 127.0.0.1
-{"level":"info","time":"2024-01-10T06:11:55Z","message":"717684fa40fa:: listening on 127.0.0.1:8080"}
+
+## Docker
+
+```bash
+docker build -t gosqueal .
 ```
