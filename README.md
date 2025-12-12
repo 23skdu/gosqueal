@@ -3,8 +3,6 @@
 
 # gosqueal
 
-![CI](https://github.com/23skdu/gosqueal/actions/workflows/ci.yml/badge.svg?branch=fix/standardize-layout)
-
 A simple TCP server that logs and executes received SQL queries against an in-memory SQLite database. Useful for testing or as a honeypot.
 
 ## Architecture
