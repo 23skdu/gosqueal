@@ -1,12 +1,16 @@
 package main
 
 import (
+"bufio"
 "database/sql"
 "flag"
+"fmt"
 "net"
 "os"
 "os/signal"
+"strings"
 "syscall"
+"text/tabwriter"
 
 "github.com/rs/zerolog"
 "github.com/rs/zerolog/log"
@@ -86,27 +90,117 @@ defer conn.Close()
 ip := conn.RemoteAddr().String()
 log.Info().Str("hostname", hostname).Str("client", ip).Msg("client connected")
 
-buffer := make([]byte, 1024)
-mLen, err := conn.Read(buffer)
-if err != nil {
-log.Error().Err(err).Msg("error reading")
-return
+scanner := bufio.NewScanner(conn)
+w := tabwriter.NewWriter(conn, 0, 0, 2, ' ', 0)
+
+fmt.Fprintf(conn, "Connected to gosqueal at %s\nType .help for usage.\n> ", hostname)
+
+for scanner.Scan() {
+input := strings.TrimSpace(scanner.Text())
+if input == "" {
+fmt.Fprint(conn, "> ")
+continue
 }
 
-query := string(buffer[:mLen])
-log.Info().Str("client", ip).Str("query", query).Msg("received query")
-
-_, err = db.Exec("INSERT into translog VALUES(TIME('now'),?,?);", ip, query)
+// Log the query
+log.Info().Str("client", ip).Str("query", input).Msg("received query")
+_, err := db.Exec("INSERT into translog VALUES(TIME('now'),?,?);", ip, input)
 if err != nil {
 log.Error().Err(err).Msg("error logging transaction")
 }
 
-// Execute the query
-_, err = db.Exec(query)
-if err != nil {
-log.Error().Err(err).Str("query", query).Msg("error executing query")
-conn.Write([]byte("Error: " + err.Error() + "\n"))
-} else {
-conn.Write([]byte("OK\n"))
+if strings.HasPrefix(input, ".") {
+if handleDotCommand(conn, db, input, w) {
+return
 }
+} else {
+handleSQLCommand(conn, db, input, w)
+}
+
+fmt.Fprint(conn, "> ")
+}
+}
+
+func handleDotCommand(conn net.Conn, db *sql.DB, input string, w *tabwriter.Writer) bool {
+parts := strings.Fields(input)
+cmd := parts[0]
+
+switch cmd {
+case ".quit", ".exit":
+fmt.Fprintln(conn, "Bye!")
+return true
+case ".tables":
+runQuery(conn, db, "SELECT name FROM sqlite_master WHERE type='table'", w)
+case ".schema":
+runQuery(conn, db, "SELECT sql FROM sqlite_master WHERE sql IS NOT NULL", w)
+case ".databases":
+runQuery(conn, db, "PRAGMA database_list", w)
+case ".help":
+fmt.Fprintln(conn, ".tables     List tables")
+fmt.Fprintln(conn, ".schema     Show schema")
+fmt.Fprintln(conn, ".databases  List databases")
+fmt.Fprintln(conn, ".quit       Exit")
+default:
+fmt.Fprintf(conn, "Unknown command: %s\n", cmd)
+}
+return false
+}
+
+func handleSQLCommand(conn net.Conn, db *sql.DB, query string, w *tabwriter.Writer) {
+upper := strings.ToUpper(query)
+if strings.HasPrefix(upper, "SELECT") || strings.HasPrefix(upper, "PRAGMA") {
+runQuery(conn, db, query, w)
+} else {
+res, err := db.Exec(query)
+if err != nil {
+fmt.Fprintf(conn, "Error: %s\n", err)
+return
+}
+rows, _ := res.RowsAffected()
+fmt.Fprintf(conn, "OK. %d rows affected.\n", rows)
+}
+}
+
+func runQuery(conn net.Conn, db *sql.DB, query string, w *tabwriter.Writer) {
+rows, err := db.Query(query)
+if err != nil {
+fmt.Fprintf(conn, "Error: %s\n", err)
+return
+}
+defer rows.Close()
+
+cols, _ := rows.Columns()
+for i, col := range cols {
+fmt.Fprintf(w, "%s", col)
+if i < len(cols)-1 {
+fmt.Fprint(w, "\t")
+}
+}
+fmt.Fprintln(w)
+
+readCols := make([]interface{}, len(cols))
+writeCols := make([]sql.NullString, len(cols))
+for i := range writeCols {
+readCols[i] = &writeCols[i]
+}
+
+for rows.Next() {
+err := rows.Scan(readCols...)
+if err != nil {
+fmt.Fprintf(conn, "Error scanning: %s\n", err)
+return
+}
+for i, col := range writeCols {
+if col.Valid {
+fmt.Fprintf(w, "%s", col.String)
+} else {
+fmt.Fprint(w, "NULL")
+}
+if i < len(cols)-1 {
+fmt.Fprint(w, "\t")
+}
+}
+fmt.Fprintln(w)
+}
+w.Flush()
 }
