@@ -12,9 +12,9 @@ import (
 "syscall"
 "text/tabwriter"
 
+"github.com/mattn/go-sqlite3"
 "github.com/rs/zerolog"
 "github.com/rs/zerolog/log"
-_ "modernc.org/sqlite"
 )
 
 func main() {
@@ -39,17 +39,31 @@ if err != nil {
 log.Fatal().Err(err).Msg("failed to get hostname")
 }
 
-db, err := sql.Open("sqlite", ":memory:")
+// Register custom driver to load extensions
+sql.Register("sqlite3_custom", &sqlite3.SQLiteDriver{
+Extensions: []string{
+"/usr/lib/vector0",
+"/usr/lib/vss0",
+},
+})
+
+db, err := sql.Open("sqlite3_custom", ":memory:")
 if err != nil {
 log.Fatal().Err(err).Msg("failed to open db")
 }
 defer db.Close()
 
-_, err = db.Exec(`
-create table translog(time timestamp primary key, client text, query text);
-`)
+// Initialize tables
+initSQL := `
+CREATE TABLE translog(time timestamp primary key, client text, query text);
+CREATE VIRTUAL TABLE vectors USING vss0(
+headline_embedding(384),
+description_embedding(384)
+);
+`
+_, err = db.Exec(initSQL)
 if err != nil {
-log.Fatal().Err(err).Msg("failed to create table")
+log.Fatal().Err(err).Msg("failed to initialize tables (vss loaded?)")
 }
 
 addr := *srvHost + ":" + *srvPort
@@ -136,10 +150,10 @@ runQuery(conn, db, "SELECT sql FROM sqlite_master WHERE sql IS NOT NULL", w)
 case ".databases":
 runQuery(conn, db, "PRAGMA database_list", w)
 case ".help":
-fmt.Fprintln(conn, ".tables     List tables")
-fmt.Fprintln(conn, ".schema     Show schema")
-fmt.Fprintln(conn, ".databases  List databases")
-fmt.Fprintln(conn, ".quit       Exit")
+fmt.Fprintln(conn, ".tables List tables")
+fmt.Fprintln(conn, ".schema Show schema")
+fmt.Fprintln(conn, ".databases List databases")
+fmt.Fprintln(conn, ".quit Exit")
 default:
 fmt.Fprintf(conn, "Unknown command: %s\n", cmd)
 }
