@@ -1,6 +1,6 @@
 module gosqueal
 
-go 1.21.3
+go 1.22
 
 require (
 	github.com/rs/zerolog v1.31.0
