@@ -1,5 +1,0 @@
-image:
-  repository: gcr.io/gosqueal/gosqueal
-  tag: ""  
-  digest: ""
-  pullPolicy: Always
