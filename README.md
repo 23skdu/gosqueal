@@ -1,3 +1,6 @@
+[![CI](https://github.com/23skdu/gosqueal/actions/workflows/ci.yml/badge.svg)](https://github.com/23skdu/gosqueal/actions/workflows/ci.yml)
+[![Release](https://github.com/23skdu/gosqueal/actions/workflows/release.yml/badge.svg)](https://github.com/23skdu/gosqueal/actions/workflows/release.yml)
+
 # gosqueal
 
 ![CI](https://github.com/23skdu/gosqueal/actions/workflows/ci.yml/badge.svg?branch=fix/standardize-layout)
