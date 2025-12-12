@@ -1,5 +1,11 @@
-# Workflow fixed
 name: CI
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 jobs:
   validate:
     name: Validate Artifacts
@@ -18,10 +24,3 @@ jobs:
         run: golangci-lint run ./...
       - name: Test
         run: go test -v ./...
-on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
