@@ -7,8 +7,8 @@ RUN apt-get update && apt-get install -y wget gcc libc6-dev
 
 # Download sqlite-vss extensions
 RUN mkdir -p /deps
-RUN wget -O /deps/vss0.so https://github.com/asg017/sqlite-vss/releases/download/v0.1.2/vss0-linux-x86_64.so
-RUN wget -O /deps/vector0.so https://github.com/asg017/sqlite-vss/releases/download/v0.1.2/vector0-linux-x86_64.so
+RUN wget -O /deps/sqlite-vss.tar.gz https://github.com/asg017/sqlite-vss/releases/download/v0.1.2/sqlite-vss-v0.1.2-loadable-linux-x86_64.tar.gz
+RUN tar -xzf /deps/sqlite-vss.tar.gz -C /deps
 
 COPY go.mod go.sum ./
 RUN go mod download
