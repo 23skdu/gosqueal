@@ -1,6 +1,7 @@
 [![CI](https://github.com/23skdu/gosqueal/actions/workflows/ci.yml/badge.svg)](https://github.com/23skdu/gosqueal/actions/workflows/ci.yml)
 [![Release](https://github.com/23skdu/gosqueal/actions/workflows/release.yml/badge.svg)](https://github.com/23skdu/gosqueal/actions/workflows/release.yml)
 [![Markdown Lint](https://github.com/23skdu/gosqueal/actions/workflows/markdown-lint.yml/badge.svg)](https://github.com/23skdu/gosqueal/actions/workflows/markdown-lint.yml)
+[![Helm Validation](https://github.com/23skdu/gosqueal/actions/workflows/helm-validation.yml/badge.svg)](https://github.com/23skdu/gosqueal/actions/workflows/helm-validation.yml)
 
 # gosqueal
 
