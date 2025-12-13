@@ -5,7 +5,7 @@
 # gosqueal
 
 A simple TCP server that logs and executes received SQL queries against an
-in-memory SQLite database. Useful for testing or as a honeypot.
+in-memory SQLite database for Agents
 
 ## Architecture
 
