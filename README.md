@@ -33,3 +33,4 @@ go build ./cmd/gosqueal
 ```bash
 docker build -t gosqueal .
 ```
+<- Refactor tests to use isolated listeners for better trigger -->
