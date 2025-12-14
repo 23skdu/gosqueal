@@ -3,8 +3,7 @@
 [![Markdown Lint](https://github.com/23skdu/gosqueal/actions/workflows/markdown-lint.yml/badge.svg)](https://github.com/23skdu/gosqueal/actions/workflows/markdown-lint.yml)
 [![Helm Validation](https://github.com/23skdu/gosqueal/actions/workflows/helm-validation.yml/badge.svg)](https://github.com/23skdu/gosqueal/actions/workflows/helm-validation.yml)
 
-<img width="848" height="1024" alt="image" src="https://github.com/user-attachments/assets/aa7edd4b-2581-42ca-8869-f991cc72aad8" />
-
+<img width="422" height="328" alt="image" src="https://github.com/user-attachments/assets/4c009589-049a-44f3-9474-cb1fd230c57e" />
 
 # gosqueal
 
