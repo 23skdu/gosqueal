@@ -3,6 +3,9 @@
 [![Markdown Lint](https://github.com/23skdu/gosqueal/actions/workflows/markdown-lint.yml/badge.svg)](https://github.com/23skdu/gosqueal/actions/workflows/markdown-lint.yml)
 [![Helm Validation](https://github.com/23skdu/gosqueal/actions/workflows/helm-validation.yml/badge.svg)](https://github.com/23skdu/gosqueal/actions/workflows/helm-validation.yml)
 
+<img width="848" height="1024" alt="image" src="https://github.com/user-attachments/assets/aa7edd4b-2581-42ca-8869-f991cc72aad8" />
+
+
 # gosqueal
 
 A simple TCP server that logs and executes received SQL queries against an
