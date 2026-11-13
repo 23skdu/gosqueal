@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"database/sql"
 	"flag"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"strings"
 	"syscall"
 	"text/tabwriter"
+	"time"
 
 	sqlite3 "github.com/mattn/go-sqlite3"
 	"github.com/rs/zerolog"
@@ -29,6 +31,9 @@ func run(args []string) int {
 	srvHost := fs.String("host", "0.0.0.0", "server ip")
 	srvPort := fs.String("port", "1118", "server port")
 	if err := fs.Parse(args); err != nil {
+		return 1
+	}
+	if len(fs.Args()) > 0 {
 		return 1
 	}
 
@@ -68,32 +73,41 @@ func run(args []string) int {
 
 	<-stop
 	log.Info().Msg("shutting down...")
-	listener.Close()
+	_ = listener.Close()
 	return 0
 }
 
 func initDB() (*sql.DB, error) {
+	extensions := []string{}
+	for _, p := range []string{"/usr/lib/vector0", "/usr/lib/vss0"} {
+		if _, err := os.Stat(p); err == nil {
+			extensions = append(extensions, p)
+		}
+	}
+
 	sql.Register("sqlite3_custom", &sqlite3.SQLiteDriver{
-		Extensions: []string{
-			"/usr/lib/vector0",
-			"/usr/lib/vss0",
-		},
+		Extensions: extensions,
 	})
 
 	db, err := sql.Open("sqlite3_custom", ":memory:")
 	if err != nil {
 		return nil, fmt.Errorf("failed to open db: %w", err)
 	}
+	db.SetMaxOpenConns(1)
 
 	initSQL := `
-	CREATE TABLE translog(time timestamp primary key, client text, query text);
+	CREATE TABLE translog(id INTEGER PRIMARY KEY AUTOINCREMENT, time timestamp, client text, query text);
+	`
+	if len(extensions) == 2 {
+		initSQL += `
 	CREATE VIRTUAL TABLE vectors USING vss0(
 		headline_embedding(384),
 		description_embedding(384)
 	);
 	`
+	}
 	if _, err = db.Exec(initSQL); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, fmt.Errorf("failed to initialize tables: %w", err)
 	}
 
@@ -101,6 +115,7 @@ func initDB() (*sql.DB, error) {
 }
 
 func acceptLoop(listener net.Listener, db *sql.DB, hostname string, stop <-chan os.Signal) {
+	sem := make(chan struct{}, 100)
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
@@ -112,7 +127,16 @@ func acceptLoop(listener net.Listener, db *sql.DB, hostname string, stop <-chan 
 				continue
 			}
 		}
-		go handleConnection(conn, db, hostname)
+		select {
+		case sem <- struct{}{}:
+		default:
+			_ = conn.Close()
+			continue
+		}
+		go func(c net.Conn) {
+			defer func() { <-sem }()
+			handleConnection(c, db, hostname)
+		}(conn)
 	}
 }
 
@@ -122,6 +146,7 @@ func handleConnection(conn net.Conn, db *sql.DB, hostname string) {
 	log.Info().Str("hostname", hostname).Str("client", ip).Msg("client connected")
 
 	scanner := bufio.NewScanner(conn)
+	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	w := tabwriter.NewWriter(conn, 0, 0, 2, ' ', 0)
 
 	fmt.Fprintf(conn, "Connected to gosqueal at %s\nType .help for usage.\n> ", hostname)
@@ -134,7 +159,9 @@ func handleConnection(conn net.Conn, db *sql.DB, hostname string) {
 		}
 
 		log.Info().Str("client", ip).Str("query", input).Msg("received query")
-		_, err := db.Exec("INSERT into translog VALUES(TIME('now'),?,?);", ip, input)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		_, err := db.ExecContext(ctx, "INSERT INTO translog(time, client, query) VALUES(TIME('now'),?,?);", ip, input)
+		cancel()
 		if err != nil {
 			log.Error().Err(err).Msg("error logging transaction")
 		}
@@ -153,6 +180,9 @@ func handleConnection(conn net.Conn, db *sql.DB, hostname string) {
 
 func handleDotCommand(conn net.Conn, db *sql.DB, input string, w *tabwriter.Writer) bool {
 	parts := strings.Fields(input)
+	if len(parts) == 0 {
+		return false
+	}
 	cmd := parts[0]
 
 	switch cmd {
@@ -177,11 +207,14 @@ func handleDotCommand(conn net.Conn, db *sql.DB, input string, w *tabwriter.Writ
 }
 
 func handleSQLCommand(conn net.Conn, db *sql.DB, query string, w *tabwriter.Writer) {
-	upper := strings.ToUpper(query)
-	if strings.HasPrefix(upper, "SELECT") || strings.HasPrefix(upper, "PRAGMA") {
+	upper := strings.ToUpper(strings.TrimSpace(query))
+	if strings.HasPrefix(upper, "SELECT") || strings.HasPrefix(upper, "PRAGMA") ||
+		strings.HasPrefix(upper, "WITH") || strings.HasPrefix(upper, "EXPLAIN") {
 		runQuery(conn, db, query, w)
 	} else {
-		res, err := db.Exec(query)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		res, err := db.ExecContext(ctx, query)
 		if err != nil {
 			fmt.Fprintf(conn, "Error: %s\n", err)
 			return
@@ -192,7 +225,9 @@ func handleSQLCommand(conn net.Conn, db *sql.DB, query string, w *tabwriter.Writ
 }
 
 func runQuery(conn net.Conn, db *sql.DB, query string, w *tabwriter.Writer) {
-	rows, err := db.Query(query)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	rows, err := db.QueryContext(ctx, query)
 	if err != nil {
 		fmt.Fprintf(conn, "Error: %s\n", err)
 		return
@@ -208,23 +243,28 @@ func runQuery(conn net.Conn, db *sql.DB, query string, w *tabwriter.Writer) {
 	}
 	fmt.Fprintln(w)
 
-	readCols := make([]interface{}, len(cols))
-	writeCols := make([]sql.NullString, len(cols))
-	for i := range writeCols {
-		readCols[i] = &writeCols[i]
+	values := make([]interface{}, len(cols))
+	scanTargets := make([]interface{}, len(cols))
+	for i := range values {
+		scanTargets[i] = &values[i]
 	}
 
+	rowCount := 0
 	for rows.Next() {
-		err := rows.Scan(readCols...)
-		if err != nil {
+		if rowCount >= 1000 {
+			fmt.Fprintln(w, "... (truncated after 1000 rows)")
+			break
+		}
+		rowCount++
+		if err := rows.Scan(scanTargets...); err != nil {
 			fmt.Fprintf(conn, "Error scanning: %s\n", err)
 			return
 		}
-		for i, col := range writeCols {
-			if col.Valid {
-				fmt.Fprintf(w, "%s", col.String)
-			} else {
+		for i, v := range values {
+			if v == nil {
 				fmt.Fprint(w, "NULL")
+			} else {
+				fmt.Fprintf(w, "%v", v)
 			}
 			if i < len(cols)-1 {
 				fmt.Fprint(w, "\t")
@@ -232,5 +272,5 @@ func runQuery(conn net.Conn, db *sql.DB, query string, w *tabwriter.Writer) {
 		}
 		fmt.Fprintln(w)
 	}
-	w.Flush()
+	_ = w.Flush()
 }
