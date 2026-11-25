@@ -36,3 +36,7 @@ go build ./cmd/gosqueal
 docker build -t gosqueal .
 ```
 <- Refactor tests to use isolated listeners for better trigger -->
+
+## License
+
+This project is released into the public domain under the [Unlicense](https://unlicense.org). See [LICENSE](LICENSE) for details.
